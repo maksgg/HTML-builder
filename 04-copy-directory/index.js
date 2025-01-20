@@ -1,25 +1,53 @@
 const fs = require('fs');
+const { readdir } = require('node:fs/promises');
 const path = require('path');
 
-function copyDir(src, dest) {
-  if (!fs.existsSync(dest)) {
-    fs.mkdirSync(dest);
-  }
+const origin = 'files';
+const target = 'files-copy';
+let filesList = [];
 
-  const files = fs.readdirSync(src);
-
-  files.forEach((file) => {
-    const srcPath = path.join(src, file);
-    const destPath = path.join(dest, file);
-
-    fs.copyFileSync(srcPath, destPath);
+function rmDir(target) {
+  return new Promise((resolve, reject) => {
+    fs.rm(path.join(__dirname, target), { recursive: true }, (error) => {
+      if (error) return reject(error);
+      console.log(`Directory ${target} deleted successfully.`);
+      resolve();
+    });
   });
-
-  console.log('Directory copied successfully!');
 }
 
-const sourceDir = path.join(__dirname, 'files');
+function mkDir() {
+  fs.mkdir(path.join(__dirname, target), { recursive: true }, (err) => {
+    if (err) {
+      return console.error(err);
+    }
+    console.log(`Directory ${target} created successfully.`);
+    copyFiles();
+  });
+}
 
-const destinationDir = path.join(__dirname, 'files-copy');
+function copyFiles() {
+  for (const file of filesList) {
+    const [from, to] = [
+      path.join(__dirname, origin, file),
+      path.join(__dirname, target, file),
+    ];
+    fs.copyFile(from, to, fs.constants.COPYFILE_EXCL, (err) => {
+      if (err) {
+        console.log(err);
+      } else {
+        console.log(`Copyed: ${file}`);
+      }
+    });
+  }
+}
 
-copyDir(sourceDir, destinationDir);
+async function copyDir() {
+  await rmDir(target).catch((error) => {});
+  readdir(path.join(__dirname, origin)).then((files) => {
+    filesList = [...files];
+    mkDir();
+  });
+}
+
+copyDir();
